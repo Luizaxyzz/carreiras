@@ -50,7 +50,10 @@ function ResumesPage() {
 
   async function removeResume(id: string) {
     const { error } = await supabase.from("resumes").delete().eq("id", id);
-    if (error) return toast.error("Não foi possível excluir agora.");
+    if (error) {
+      toast.error("Não foi possível excluir agora.");
+      return;
+    }
     setResumes((current) => current.filter((item) => item.id !== id));
     toast.success("Currículo removido.");
   }
