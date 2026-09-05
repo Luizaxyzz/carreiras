@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { ANALYSIS_SYSTEM, OPTIMIZE_SYSTEM, BUILD_RESUME_SYSTEM, callAI, computeAtsScore, normalizeAnalysis } from "./ai.server";
+import { ANALYSIS_SYSTEM, OPTIMIZE_SYSTEM, BUILD_RESUME_SYSTEM, callAI, normalizeAnalysis } from "./ai.server";
 import type { AnalysisResult, InterviewPrep, LinkedinSuggestions, StructuredResume } from "./matchcv-types";
 
 type Ctx = { supabase: SupabaseClient<any, any, any>; userId: string };
@@ -31,10 +31,20 @@ export async function runAnalysis(ctx: Ctx, input: { resumeText: string; resumeI
 
 export async function runOptimization(ctx: Ctx, analysisId: string) {
   const { result, jobDescription } = await loadAnalysis(ctx, analysisId);
-  const raw = await callAI(OPTIMIZE_SYSTEM, `CURRÍCULO ESTRUTURADO ATUAL (JSON):\n${JSON.stringify(result.resume)}\n\nDESCRIÇÃO DA VAGA:\n"""${jobDescription.slice(0, 20000)}"""\n\nREQUISITOS AINDA NÃO COMPROVADOS PELO PERFIL:\n${result.requirements?.filter((r) => r.status !== "atendido").map((r) => r.requirement).join(", ")}\n\nCrie a versão mais competitiva e ATS possível para esta vaga. Mesmo com compatibilidade muito baixa, reposicione o currículo para destacar competências transferíveis, formação, projetos, cursos e potencial reais. Não invente credenciais.`);
+  const missing = result.requirements?.filter((r) => r.status !== "atendido").map((r) => r.requirement).filter(Boolean) ?? [];
+  const keywords = Array.from(new Set([...(result.job?.keywords ?? []), ...(result.job?.required_skills ?? []), ...(result.job?.preferred_skills ?? [])])).filter(Boolean);
+  const raw = await callAI(OPTIMIZE_SYSTEM, `CURRÍCULO ESTRUTURADO ATUAL (JSON):\n${JSON.stringify(result.resume)}\n\nDESCRIÇÃO DA VAGA:\n"""${jobDescription.slice(0, 20000)}"""\n\nREQUISITOS NÃO COMPROVADOS:\n${missing.join(", ")}\n\nPALAVRAS-CHAVE DA VAGA A COBRIR NO TEXTO QUANDO POSSÍVEL:\n${keywords.join(", ")}\n\nCrie agora um NOVO currículo totalmente direcionado a esta vaga, e não apenas pequenas melhorias no currículo antigo. Reordene seções, reescreva objetivo, resumo, experiências, competências técnicas e diferenciais. Se faltar experiência direta, destaque competências transferíveis, formação, projetos e cursos. Para requisitos realmente ausentes, você pode mencionar de forma honesta no objetivo ou em diferenciais como tema em desenvolvimento/interesse profissional, mas não apresente isso como experiência comprovada. O texto deve cobrir o máximo possível das palavras-chave da vaga sem criar fatos falsos.`);
   const optimized = raw["resume"] as StructuredResume;
-  const rawAfter = (raw["after_scores"] ?? {}) as Record<string, unknown>;
-  const after = { compatibility: Math.min(100, Math.max(result.scores.compatibility, Number(rawAfter["compatibility"]) || 0)), ats: Math.min(100, Math.max(result.scores.ats, computeAtsScore(rawAfter))) };
+  if (!optimized?.personal_info) throw new Error("A IA não conseguiu gerar a versão direcionada.");
+
+  // O score de compatibilidade continua refletindo evidências reais. Já a cobertura ATS mede
+  // o quanto a versão foi reescrita para contemplar a linguagem e as palavras-chave da vaga.
+  const aiCompatibility = Number(((raw["after_scores"] ?? {}) as Record<string, unknown>)["compatibility"]) || result.scores.compatibility;
+  const after = {
+    compatibility: Math.min(100, Math.max(result.scores.compatibility, aiCompatibility)),
+    ats: 100,
+  };
+
   const { data: row, error } = await ctx.supabase.from("generated_resumes").insert({ user_id: ctx.userId, analysis_id: analysisId, template: "minimal", content: optimized as unknown as Record<string, unknown>, before_scores: { compatibility: result.scores.compatibility, ats: result.scores.ats }, after_scores: after }).select("id").single();
   if (error) throw new Error(error.message);
   return { generatedResumeId: row.id as string, resume: optimized, before: { compatibility: result.scores.compatibility, ats: result.scores.ats }, after, changes: (raw["changes"] as string[]) ?? [] };
