@@ -126,10 +126,10 @@ export const APPLICATION_STATUSES = [
 
 export const TEMPLATES = [
   { id: "minimal", name: "Minimal", category: "tecnologia", description: "Tipografia limpa, foco no conteúdo." },
-  { id: "modern", name: "Modern", category: "tecnologia", description: "Duas colunas e detalhes contemporâneos." },
+  { id: "modern", name: "Modern", category: "tecnologia", description: "Duas colunas com visual moderno e profissional." },
   { id: "classic", name: "Classic", category: "corporativo", description: "Estrutura tradicional e sóbria." },
-  { id: "professional", name: "Profissional", category: "corporativo", description: "Curvas sutis e leitura muito clara." },
-  { id: "tech", name: "Editorial", category: "tecnologia", description: "Tipografia expressiva e blocos amplos." },
+  { id: "professional", name: "Profissional", category: "corporativo", description: "Visual corporativo limpo, com seções bem definidas." },
+  { id: "tech", name: "Tech", category: "tecnologia", description: "Layout técnico em blocos, ideal para tecnologia e dados." },
   { id: "executive", name: "Executivo", category: "executivo", description: "Barra lateral e presença marcante." },
   { id: "clean", name: "Clean", category: "primeiro_emprego", description: "Elegante, leve e fácil de percorrer." },
   { id: "compact", name: "Compacto", category: "primeiro_emprego", description: "Duas colunas para aproveitar a página." },
