@@ -13,8 +13,9 @@ import type { ResumeAppearance, ResumeFont, ResumeSpacing } from "@/components/r
 import { TemplateThumb } from "@/components/landing/TemplateCard";
 import { SAMPLE_RESUME } from "@/lib/sample-resume";
 import { TEMPLATES } from "@/lib/matchcv-types";
-import type { AnalysisResult, StructuredResume } from "@/lib/matchcv-types";
+import type { StructuredResume } from "@/lib/matchcv-types";
 import { optimizeResume } from "@/lib/ai.functions";
+import { downloadResumePdf } from "@/lib/pdf-export";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -46,6 +47,22 @@ function TemplatesPage() {
     setIsSample(false);
   }
 
+  async function generateForJob(showToast = true) {
+    if (!analysisId) return;
+    setOptimizing(true);
+    try {
+      const response = await optimizeResume({ data: { analysisId } });
+      applyResume(response.resume);
+      setScores({ before: response.before, after: response.after });
+      setChanges(response.changes ?? []);
+      if (showToast) toast.success("Novo currículo direcionado à vaga criado.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível criar o currículo para esta vaga agora.");
+    } finally {
+      setOptimizing(false);
+    }
+  }
+
   useEffect(() => {
     if (builder === "1") {
       const stored = window.sessionStorage.getItem("matchcv-builder-resume");
@@ -64,9 +81,8 @@ function TemplatesPage() {
         if (generated.before_scores && generated.after_scores) setScores({ before: generated.before_scores as { compatibility: number; ats: number }, after: generated.after_scores as { compatibility: number; ats: number } });
         return;
       }
-      const { data: analysisRow } = await supabase.from("analyses").select("result").eq("id", analysisId).maybeSingle();
-      const result = analysisRow?.result as AnalysisResult | undefined;
-      if (result?.resume) applyResume(result.resume);
+      // Primeira entrada após a análise: já gera a versão para a vaga automaticamente.
+      await generateForJob(false);
     })();
   }, [analysisId, builder, user]);
 
@@ -80,36 +96,38 @@ function TemplatesPage() {
     setResume((current) => ({ ...current, personal_info: { ...current.personal_info, [field]: value } }));
   }
 
-  async function runOptimize() {
-    if (!analysisId) { toast.error("Faça uma análise de vaga primeiro para gerar uma versão direcionada."); return; }
-    setOptimizing(true);
-    try {
-      const response = await optimizeResume({ data: { analysisId } });
-      applyResume(response.resume);
-      setScores({ before: response.before, after: response.after });
-      setChanges(response.changes ?? []);
-      toast.success("Versão direcionada à vaga criada.");
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Não foi possível otimizar agora."); }
-    finally { setOptimizing(false); }
+  function editedResume() {
+    return {
+      ...resume,
+      skills: skills.split(",").map((v) => v.trim()).filter(Boolean),
+      differentiators: differentiators.split(",").map((v) => v.trim()).filter(Boolean),
+    };
   }
 
   function applyEdits() {
-    const next = { ...resume, skills: skills.split(",").map((v) => v.trim()).filter(Boolean), differentiators: differentiators.split(",").map((v) => v.trim()).filter(Boolean) };
+    const next = editedResume();
     setResume(next);
     if (builder === "1") window.sessionStorage.setItem("matchcv-builder-resume", JSON.stringify(next));
     window.localStorage.setItem("matchcv-resume-appearance", JSON.stringify(appearance));
     toast.success("Alterações aplicadas à visualização.");
   }
 
-  function downloadResume() { applyEdits(); setTimeout(() => window.print(), 200); }
+  function downloadResume() {
+    const next = editedResume();
+    setResume(next);
+    if (builder === "1") window.sessionStorage.setItem("matchcv-builder-resume", JSON.stringify(next));
+    window.localStorage.setItem("matchcv-resume-appearance", JSON.stringify(appearance));
+    downloadResumePdf(next);
+    toast.success("PDF baixado.");
+  }
 
   return <div className="space-y-8">
     <div className="no-print flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-      <div className="flex items-start gap-4"><div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary"><LayoutTemplate className="size-5" /></div><div><p className="text-sm font-medium text-primary">Personalização</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Escolha o modelo do seu currículo</h1><p className="mt-2 max-w-2xl text-muted-foreground">Revise o conteúdo, escolha o visual e exporte em PDF.</p></div></div>
-      <div className="flex gap-2"><Button variant="outline" onClick={downloadResume}><Download className="mr-2 size-4" />Exportar PDF</Button><Button className="gradient-primary" onClick={applyEdits}><Save className="mr-2 size-4" />Salvar alterações</Button></div>
+      <div className="flex items-start gap-4"><div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary"><LayoutTemplate className="size-5" /></div><div><p className="text-sm font-medium text-primary">Personalização</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Escolha o modelo do seu currículo</h1><p className="mt-2 max-w-2xl text-muted-foreground">Revise o conteúdo, escolha o visual e baixe o arquivo em PDF.</p></div></div>
+      <div className="flex gap-2"><Button variant="outline" onClick={downloadResume}><Download className="mr-2 size-4" />Baixar PDF</Button><Button className="gradient-primary" onClick={applyEdits}><Save className="mr-2 size-4" />Salvar alterações</Button></div>
     </div>
 
-    {analysisId ? <section className="no-print rounded-2xl border border-primary/20 bg-primary-soft/40 p-5 md:flex md:items-center md:justify-between md:gap-6"><div><h2 className="text-lg font-semibold">Currículo direcionado para esta vaga</h2><p className="mt-1 text-sm text-muted-foreground">A IA prioriza ATS, palavras-chave verdadeiras, competências transferíveis e evidências relevantes do seu perfil.</p>{scores ? <p className="mt-3 text-sm font-medium">Compatibilidade {scores.before.compatibility}% → <span className="text-primary">{scores.after.compatibility}%</span> · ATS {scores.before.ats}% → <span className="text-primary">{scores.after.ats}%</span></p> : null}</div><Button className="mt-4 gradient-primary md:mt-0" onClick={() => void runOptimize()} disabled={optimizing}>{optimizing ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Sparkles className="mr-2 size-4" />}{optimizing ? "Criando versão..." : "Criar versão forte para a vaga"}</Button></section> : builder === "1" ? <div className="no-print rounded-2xl border border-primary/20 bg-primary-soft/40 p-5"><h2 className="font-semibold">Seu novo currículo está pronto</h2><p className="mt-1 text-sm text-muted-foreground">A IA já estruturou objetivo, resumo, experiências, competências técnicas e diferenciais. Revise abaixo e escolha o modelo.</p></div> : <p className="no-print rounded-2xl border border-dashed border-border p-5 text-sm text-muted-foreground">{isSample ? "Você está vendo um currículo de exemplo." : "Editando seu currículo."}</p>}
+    {analysisId ? <section className="no-print rounded-2xl border border-primary/20 bg-primary-soft/40 p-5 md:flex md:items-center md:justify-between md:gap-6"><div><h2 className="text-lg font-semibold">Currículo criado especificamente para esta vaga</h2><p className="mt-1 text-sm text-muted-foreground">A IA reescreve o currículo por completo para a oportunidade, priorizando ATS, palavras-chave, competências transferíveis e tudo o que seu perfil realmente pode sustentar.</p>{optimizing ? <p className="mt-3 text-sm font-medium text-primary">Gerando a versão direcionada à vaga...</p> : scores ? <p className="mt-3 text-sm font-medium">Aderência comprovada: {scores.before.compatibility}% → <span className="text-primary">{scores.after.compatibility}%</span> · Cobertura ATS da versão: <span className="text-primary">{scores.after.ats}%</span></p> : null}<p className="mt-2 text-xs text-muted-foreground">Cobertura ATS indica o quanto o texto foi alinhado à linguagem da vaga; não transforma requisitos não comprovados em experiência real.</p></div><Button className="mt-4 gradient-primary md:mt-0" onClick={() => void generateForJob(true)} disabled={optimizing}>{optimizing ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Sparkles className="mr-2 size-4" />}{optimizing ? "Criando currículo..." : "Gerar outra versão para a vaga"}</Button></section> : builder === "1" ? <div className="no-print rounded-2xl border border-primary/20 bg-primary-soft/40 p-5"><h2 className="font-semibold">Seu novo currículo está pronto</h2><p className="mt-1 text-sm text-muted-foreground">A IA já estruturou objetivo, resumo, experiências, competências técnicas e diferenciais. Revise abaixo e escolha o modelo.</p></div> : <p className="no-print rounded-2xl border border-dashed border-border p-5 text-sm text-muted-foreground">{isSample ? "Você está vendo um currículo de exemplo." : "Editando seu currículo."}</p>}
 
     {changes.length ? <section className="no-print surface-card p-6"><h2 className="font-semibold">O que a IA ajustou</h2><ul className="mt-4 space-y-2">{changes.map((item) => <li key={item} className="flex gap-2 text-sm leading-6"><Check className="mt-1 size-4 shrink-0 text-primary" />{item}</li>)}</ul></section> : null}
 
