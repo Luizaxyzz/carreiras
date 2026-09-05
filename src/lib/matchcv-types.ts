@@ -126,13 +126,13 @@ export const APPLICATION_STATUSES = [
 
 export const TEMPLATES = [
   { id: "minimal", name: "Minimal", category: "tecnologia", description: "Tipografia limpa, foco no conteúdo." },
-  { id: "modern", name: "Modern", category: "tecnologia", description: "Cabeçalho destacado e seções arejadas." },
+  { id: "modern", name: "Modern", category: "tecnologia", description: "Duas colunas e detalhes contemporâneos." },
   { id: "classic", name: "Classic", category: "corporativo", description: "Estrutura tradicional e sóbria." },
-  { id: "professional", name: "Professional", category: "corporativo", description: "Equilíbrio entre densidade e clareza." },
-  { id: "tech", name: "Tech", category: "tecnologia", description: "Skills em destaque para vagas técnicas." },
-  { id: "executive", name: "Executive", category: "executivo", description: "Presença sênior e resultados no topo." },
-  { id: "clean", name: "Clean", category: "primeiro_emprego", description: "Simples, ideal para início de carreira." },
-  { id: "compact", name: "Compact", category: "primeiro_emprego", description: "Cabe tudo em uma página." },
+  { id: "professional", name: "Profissional", category: "corporativo", description: "Curvas sutis e leitura muito clara." },
+  { id: "tech", name: "Editorial", category: "tecnologia", description: "Tipografia expressiva e blocos amplos." },
+  { id: "executive", name: "Executivo", category: "executivo", description: "Barra lateral e presença marcante." },
+  { id: "clean", name: "Clean", category: "primeiro_emprego", description: "Elegante, leve e fácil de percorrer." },
+  { id: "compact", name: "Compacto", category: "primeiro_emprego", description: "Duas colunas para aproveitar a página." },
 ] as const;
 
 export const TEMPLATE_FILTERS = [
