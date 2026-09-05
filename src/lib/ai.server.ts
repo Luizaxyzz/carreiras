@@ -40,7 +40,6 @@ export async function callAI(system: string, user: string): Promise<Record<strin
 
 const clamp = (n: unknown) => Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
 
-/** Peso interno do ATS Score (normalizado para 0-100). */
 export function computeAtsScore(s: Record<string, unknown>) {
   const w = [
     [clamp(s["hard_skills"]), 0.3],
@@ -55,55 +54,56 @@ export function computeAtsScore(s: Record<string, unknown>) {
   return clamp(w.reduce((acc, [v, weight]) => acc + v * weight, 0));
 }
 
+const RESUME_SCHEMA = `{"personal_info":{"full_name":"","headline":"","email":"","phone":"","location":""},"objective":"","professional_summary":"","experience":[{"role":"","company":"","location":"","start_date":"","end_date":"","bullets":[""]}],"education":[{"degree":"","institution":"","start_date":"","end_date":"","details":""}],"skills":[""],"differentiators":[""],"certifications":[{"name":"","issuer":"","year":""}],"projects":[{"name":"","description":"","tech":[""]}],"languages":[{"name":"","level":""}],"links":[{"label":"","url":""}]}`;
+
 export const ANALYSIS_SYSTEM = `Você é um especialista em recrutamento técnico e em sistemas ATS brasileiros. Compare um currículo com uma descrição de vaga e produza uma análise objetiva em português do Brasil.
 Formato JSON obrigatório:
 {
- "resume": {"personal_info":{"full_name":"","headline":"","email":"","phone":"","location":""},"professional_summary":"","experience":[{"role":"","company":"","location":"","start_date":"","end_date":"","bullets":[""]}],"education":[{"degree":"","institution":"","start_date":"","end_date":"","details":""}],"skills":[""],"certifications":[{"name":"","issuer":"","year":""}],"projects":[{"name":"","description":"","tech":[""]}],"languages":[{"name":"","level":""}],"links":[{"label":"","url":""}]},
+ "resume": ${RESUME_SCHEMA},
  "job": {"job_title":"","company":"","seniority":"","location":"","required_skills":[""],"preferred_skills":[""],"responsibilities":[""],"education_requirements":[""],"experience_requirements":[""],"languages":[""],"keywords":[""],"soft_skills":[""]},
  "scores": {"compatibility":0,"experience":0,"hard_skills":0,"education":0,"keywords":0,"differentials":0,"seniority":0,"languages":0,"formatting":0,"requirements":0},
  "requirements": [{"requirement":"","status":"atendido|parcial|ausente","evidence":"","type":"obrigatorio|diferencial"}],
- "keywords_found": [""],
- "keywords_missing": [""],
- "strengths": [""],
- "attention_points": [""],
- "recommendations": [""]
+ "keywords_found": [""], "keywords_missing": [""], "strengths": [""], "attention_points": [""], "recommendations": [""]
 }
 Todos os scores são 0-100. Seja honesto: se o requisito não aparece no currículo, marque "ausente".`;
 
 export const OPTIMIZE_SYSTEM = `Você é um especialista sênior em recrutamento, copywriting profissional e otimização de currículos para ATS. Sua missão é criar a versão MAIS FORTE E PERSUASIVA POSSÍVEL do currículo para a vaga alvo, inclusive quando a pessoa está migrando de área ou tem pouca/nenhuma experiência direta no cargo.
 
-Objetivo: fazer o recrutador perceber rapidamente potencial, aderência, competências transferíveis, formação, projetos, cursos e evidências reais que justifiquem uma entrevista. O currículo deve ser fácil de escanear por ATS e por humanos.
+O currículo final deve conter, sempre que houver informação suficiente: OBJETIVO, RESUMO PROFISSIONAL, EXPERIÊNCIA PROFISSIONAL, COMPETÊNCIAS TÉCNICAS, HABILIDADES E DIFERENCIAIS, FORMAÇÃO, CURSOS/CERTIFICAÇÕES, PROJETOS e IDIOMAS.
 
 Estratégia obrigatória:
-- reescreva o título e o resumo profissional mirando a vaga, sem declarar experiência que não existe;
-- identifique competências transferíveis de experiências de outras áreas e descreva-as com linguagem relevante para a vaga;
-- priorize as seções mais fortes para o caso: se a experiência direta for fraca, dê mais destaque a formação, projetos, cursos, certificações e habilidades reais;
-- reescreva bullets com verbos de ação, clareza, contexto, impacto e responsabilidade, sem inventar métricas;
-- use palavras-chave da vaga SOMENTE quando forem semanticamente verdadeiras para algo que o candidato já fez, estudou ou demonstrou;
-- elimine conteúdo genérico e irrelevante;
-- mantenha linguagem profissional, objetiva e específica;
-- para transição de carreira, use um resumo que conecte a trajetória anterior à nova área e destaque aprendizado, projetos, formação e capacidade de adaptação;
-- não esconda lacunas com afirmações falsas: compense com evidências verdadeiras e boa apresentação.
+- crie um objetivo curto e específico para a vaga;
+- escreva um resumo profissional de alto impacto, alinhado ao cargo e às palavras-chave reais do perfil;
+- reescreva experiências com verbos de ação, contexto, escopo, responsabilidades e impacto verificável, sem inventar métricas;
+- se a experiência direta for baixa, extraia competências transferíveis de estágio, trabalho, faculdade, projetos, voluntariado e cursos;
+- monte COMPETÊNCIAS TÉCNICAS com ferramentas, tecnologias, métodos e conhecimentos efetivamente informados pelo candidato;
+- monte HABILIDADES E DIFERENCIAIS com pontos fortes comprováveis, como comunicação, organização, liderança, análise, autonomia, trabalho em equipe, idiomas, prêmios, projetos e exposição internacional quando isso estiver no perfil;
+- incorpore palavras-chave da vaga apenas quando forem verdadeiras ou claramente sustentadas pelo histórico do candidato;
+- elimine conteúdo genérico, redundante e fraco;
+- priorize as seções que mais aumentam chance de entrevista;
+- para transição de carreira, conecte a trajetória anterior à área alvo e deixe clara a capacidade de aprendizado e transferência de competências.
 
-Você NÃO pode adicionar tecnologias, empresas, cursos, diplomas, cargos, datas, resultados, números ou responsabilidades inexistentes.
+Nunca prometa contratação ou entrevista. Não invente credenciais para aumentar compatibilidade.
 Formato JSON obrigatório:
-{"resume": {mesmo schema estruturado do currículo}, "after_scores": {"compatibility":0,"ats":0,"experience":0,"hard_skills":0,"education":0,"keywords":0,"differentials":0,"seniority":0,"languages":0,"formatting":0}, "changes": [""]}`;
+{"resume": ${RESUME_SCHEMA}, "after_scores": {"compatibility":0,"ats":0,"experience":0,"hard_skills":0,"education":0,"keywords":0,"differentials":0,"seniority":0,"languages":0,"formatting":0}, "changes": [""]}`;
 
-export const BUILD_RESUME_SYSTEM = `Você é um especialista sênior em currículos ATS e recrutamento. Transforme as informações livres fornecidas pelo candidato em um currículo profissional, elegante, objetivo e forte para recrutadores, sem depender de uma vaga específica.
+export const BUILD_RESUME_SYSTEM = `Você é um especialista sênior em currículos ATS e recrutamento. Transforme todas as informações fornecidas pelo candidato — incluindo currículo antigo, dados novos e instruções de mudança — em um currículo profissional, convincente e fácil de escanear por ATS, sem depender de uma vaga específica.
 
-Regras de construção:
-- organize o conteúdo em ordem de impacto;
-- escreva um título profissional coerente com o perfil informado;
-- crie um resumo profissional curto e convincente;
-- transforme descrições soltas de experiências em bullets profissionais com verbos de ação, responsabilidades e contexto, sem inventar números ou resultados;
-- destaque cursos, certificações, formação, projetos, ferramentas, idiomas e competências informadas;
-- remova repetições e linguagem informal;
+O currículo final deve conter, sempre que houver informação suficiente: OBJETIVO, RESUMO PROFISSIONAL, EXPERIÊNCIA PROFISSIONAL, COMPETÊNCIAS TÉCNICAS, HABILIDADES E DIFERENCIAIS, FORMAÇÃO ACADÊMICA, CURSOS E CERTIFICAÇÕES, PROJETOS e IDIOMAS.
+
+Regras:
+- use o currículo antigo como fonte de fatos e aproveite o que ainda for relevante;
+- respeite as instruções de mudança do candidato, como mudar foco, retirar itens, destacar cursos ou reposicionar a carreira;
+- escreva objetivo e resumo fortes, específicos e profissionais;
+- transforme experiências em bullets com verbos de ação, escopo, responsabilidades e impacto real;
+- se o candidato estiver iniciando carreira, valorize formação, projetos, cursos, competências transferíveis e capacidade de aprendizado;
+- se houver lacunas, não preencha com fatos inventados; use apresentação estratégica do que existe;
+- remova repetições, linguagem informal e informações fracas;
 - use termos claros e reconhecíveis por ATS;
-- se a pessoa estiver iniciando carreira, valorize formação, projetos, cursos e competências transferíveis;
 - não invente informação para preencher campos vazios.
 
 Formato JSON obrigatório:
-{"resume":{"personal_info":{"full_name":"","headline":"","email":"","phone":"","location":""},"professional_summary":"","experience":[{"role":"","company":"","location":"","start_date":"","end_date":"","bullets":[""]}],"education":[{"degree":"","institution":"","start_date":"","end_date":"","details":""}],"skills":[""],"certifications":[{"name":"","issuer":"","year":""}],"projects":[{"name":"","description":"","tech":[""]}],"languages":[{"name":"","level":""}],"links":[{"label":"","url":""}]}}`;
+{"resume":${RESUME_SCHEMA}}`;
 
 export function resumeToText(resume: StructuredResume | null | undefined, fallback: string) {
   if (!resume) return fallback;
@@ -115,16 +115,11 @@ export function normalizeAnalysis(raw: Record<string, unknown>): AnalysisResult 
   const ats = computeAtsScore(scores);
   return {
     scores: {
-      compatibility: clamp(scores["compatibility"]),
-      ats,
-      experience: clamp(scores["experience"]),
-      hard_skills: clamp(scores["hard_skills"]),
-      education: clamp(scores["education"]),
-      keywords: clamp(scores["keywords"]),
-      differentials: clamp(scores["differentials"]),
-      seniority: clamp(scores["seniority"]),
-      languages: clamp(scores["languages"]),
-      formatting: clamp(scores["formatting"]),
+      compatibility: clamp(scores["compatibility"]), ats,
+      experience: clamp(scores["experience"]), hard_skills: clamp(scores["hard_skills"]),
+      education: clamp(scores["education"]), keywords: clamp(scores["keywords"]),
+      differentials: clamp(scores["differentials"]), seniority: clamp(scores["seniority"]),
+      languages: clamp(scores["languages"]), formatting: clamp(scores["formatting"]),
     },
     requirements: (raw["requirements"] as AnalysisResult["requirements"]) ?? [],
     keywords_found: (raw["keywords_found"] as string[]) ?? [],
