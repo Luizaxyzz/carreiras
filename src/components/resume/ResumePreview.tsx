@@ -1,233 +1,158 @@
+import type { CSSProperties, ReactNode } from "react";
+import { Mail, MapPin, Phone } from "lucide-react";
 import type { StructuredResume } from "@/lib/matchcv-types";
 import { cn } from "@/lib/utils";
 
-type TemplateId =
-  | "minimal"
-  | "modern"
-  | "classic"
-  | "professional"
-  | "tech"
-  | "executive"
-  | "clean"
-  | "compact";
-
-type Style = {
-  page: string;
-  header: string;
-  name: string;
-  headline: string;
-  sectionTitle: string;
-  body: string;
-  accentBar?: boolean;
-  twoColumnSkills?: boolean;
+export type ResumeFont = "sans" | "serif" | "humanist" | "mono";
+export type ResumeSpacing = "compact" | "balanced" | "airy";
+export type ResumeAppearance = {
+  color: string;
+  font: ResumeFont;
+  fontScale: number;
+  spacing: ResumeSpacing;
+  decorations: boolean;
 };
 
-const STYLES: Record<TemplateId, Style> = {
-  minimal: {
-    page: "p-10 text-[11px] leading-relaxed",
-    header: "border-b border-neutral-300 pb-4",
-    name: "text-2xl font-semibold tracking-tight",
-    headline: "text-[11px] uppercase tracking-[0.2em] text-neutral-500",
-    sectionTitle: "text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-500",
-    body: "text-neutral-800",
-  },
-  modern: {
-    page: "p-10 text-[11px] leading-relaxed",
-    header: "rounded-lg bg-neutral-900 px-6 py-5 text-white",
-    name: "text-2xl font-semibold tracking-tight",
-    headline: "text-[11px] text-neutral-200",
-    sectionTitle: "text-[11px] font-bold uppercase tracking-wider text-neutral-900",
-    body: "text-neutral-800",
-    accentBar: true,
-  },
-  classic: {
-    page: "p-12 text-[11px] leading-relaxed font-serif",
-    header: "text-center border-b-2 border-neutral-800 pb-4",
-    name: "text-2xl font-bold uppercase tracking-[0.12em]",
-    headline: "text-[11px] italic text-neutral-600",
-    sectionTitle: "text-[11px] font-bold uppercase tracking-[0.14em] border-b border-neutral-300 pb-1",
-    body: "text-neutral-900",
-  },
-  professional: {
-    page: "p-10 text-[11px] leading-relaxed",
-    header: "pb-4 border-b-4 border-neutral-800",
-    name: "text-[26px] font-semibold",
-    headline: "text-[11px] font-medium text-neutral-600",
-    sectionTitle: "text-[11px] font-bold uppercase tracking-wide text-neutral-700",
-    body: "text-neutral-800",
-  },
-  tech: {
-    page: "p-9 text-[11px] leading-relaxed",
-    header: "pb-4",
-    name: "text-2xl font-semibold tracking-tight",
-    headline: "text-[11px] font-mono text-neutral-600",
-    sectionTitle: "text-[10px] font-mono uppercase tracking-[0.2em] text-neutral-500",
-    body: "text-neutral-800",
-    twoColumnSkills: true,
-  },
-  executive: {
-    page: "p-12 text-[11.5px] leading-relaxed",
-    header: "pb-5 border-b border-neutral-400",
-    name: "text-[28px] font-light tracking-[0.04em] uppercase",
-    headline: "text-[11px] tracking-[0.14em] uppercase text-neutral-500",
-    sectionTitle: "text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-800",
-    body: "text-neutral-800",
-  },
-  clean: {
-    page: "p-10 text-[11px] leading-relaxed",
-    header: "pb-4",
-    name: "text-2xl font-semibold",
-    headline: "text-[11px] text-neutral-500",
-    sectionTitle: "text-[11px] font-semibold text-neutral-700",
-    body: "text-neutral-800",
-  },
-  compact: {
-    page: "p-8 text-[10px] leading-snug",
-    header: "pb-3 border-b border-neutral-300",
-    name: "text-xl font-semibold",
-    headline: "text-[10px] text-neutral-500",
-    sectionTitle: "text-[9.5px] font-bold uppercase tracking-wider text-neutral-600",
-    body: "text-neutral-800",
-    twoColumnSkills: true,
-  },
+export const DEFAULT_RESUME_APPEARANCE: ResumeAppearance = {
+  color: "#244a73",
+  font: "sans",
+  fontScale: 1,
+  spacing: "balanced",
+  decorations: true,
 };
 
-function Section({ title, style, children }: { title: string; style: Style; children: React.ReactNode }) {
+const FONT_STACKS: Record<ResumeFont, string> = {
+  sans: 'Arial, Helvetica, sans-serif',
+  serif: 'Georgia, "Times New Roman", serif',
+  humanist: 'Trebuchet MS, Arial, sans-serif',
+  mono: '"Courier New", monospace',
+};
+
+type PreviewProps = {
+  resume: StructuredResume;
+  template?: string;
+  appearance?: ResumeAppearance;
+  className?: string;
+};
+
+function Contact({ resume, icons = false }: { resume: StructuredResume; icons?: boolean }) {
+  const info = resume.personal_info;
+  const items = [
+    { text: info.phone, Icon: Phone },
+    { text: info.email, Icon: Mail },
+    { text: info.location, Icon: MapPin },
+  ].filter((item) => item.text);
+
   return (
-    <section className="mt-5">
-      <h2 className={style.sectionTitle}>{title}</h2>
-      <div className="mt-2 space-y-2.5">{children}</div>
-    </section>
+    <div className={cn("resume-contact", icons && "resume-contact-icons")}>
+      {items.map(({ text, Icon }) => (
+        <span key={text}>{icons ? <Icon aria-hidden="true" /> : null}{text}</span>
+      ))}
+      {resume.links?.map((link) => <span key={link.url}>{link.label || link.url}</span>)}
+    </div>
   );
 }
 
-export function ResumePreview({
-  resume,
-  template = "minimal",
-  className,
-}: {
-  resume: StructuredResume;
-  template?: string;
-  className?: string;
-}) {
-  const style = STYLES[(template as TemplateId) in STYLES ? (template as TemplateId) : "minimal"];
-  const info = resume?.personal_info ?? { full_name: "" };
-  const contactLine = [info.email, info.phone, info.location].filter(Boolean).join("  •  ");
+function Section({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
+  return <section className={cn("resume-section", className)}><h2>{title}</h2><div className="resume-section-content">{children}</div></section>;
+}
+
+function Summary({ resume }: { resume: StructuredResume }) {
+  return resume.professional_summary ? <Section title="Perfil"><p>{resume.professional_summary}</p></Section> : null;
+}
+
+function Experience({ resume }: { resume: StructuredResume }) {
+  return resume.experience?.length ? (
+    <Section title="Experiência profissional">
+      {resume.experience.map((exp, index) => (
+        <div className="resume-entry" key={`${exp.company}-${index}`}>
+          <div className="resume-entry-head"><strong>{exp.role}</strong><span>{[exp.start_date, exp.end_date].filter(Boolean).join(" – ")}</span></div>
+          <div className="resume-entry-sub"><strong>{exp.company}</strong>{exp.location ? <span> · {exp.location}</span> : null}</div>
+          {exp.bullets?.length ? <ul>{exp.bullets.map((bullet, itemIndex) => <li key={itemIndex}>{bullet}</li>)}</ul> : null}
+        </div>
+      ))}
+    </Section>
+  ) : null;
+}
+
+function Education({ resume }: { resume: StructuredResume }) {
+  return resume.education?.length ? (
+    <Section title="Formação acadêmica">
+      {resume.education.map((education, index) => (
+        <div className="resume-entry" key={`${education.institution}-${index}`}>
+          <div className="resume-entry-head"><strong>{education.degree}</strong><span>{[education.start_date, education.end_date].filter(Boolean).join(" – ")}</span></div>
+          <div>{education.institution}{education.details ? ` · ${education.details}` : ""}</div>
+        </div>
+      ))}
+    </Section>
+  ) : null;
+}
+
+function Skills({ resume }: { resume: StructuredResume }) {
+  return resume.skills?.length ? <Section title="Habilidades"><ul className="resume-skill-list">{resume.skills.map((skill) => <li key={skill}>{skill}</li>)}</ul></Section> : null;
+}
+
+function Languages({ resume }: { resume: StructuredResume }) {
+  return resume.languages?.length ? <Section title="Idiomas"><p>{resume.languages.map((language) => `${language.name}${language.level ? ` — ${language.level}` : ""}`).join(" · ")}</p></Section> : null;
+}
+
+function Extras({ resume }: { resume: StructuredResume }) {
+  return (
+    <>
+      {resume.projects?.length ? <Section title="Projetos">{resume.projects.map((project, index) => <div className="resume-entry" key={`${project.name}-${index}`}><strong>{project.name}</strong><p>{project.description}</p>{project.tech?.length ? <small>{project.tech.join(" · ")}</small> : null}</div>)}</Section> : null}
+      {resume.certifications?.length ? <Section title="Cursos e certificações"><ul>{resume.certifications.map((item, index) => <li key={`${item.name}-${index}`}>{item.name}{item.issuer ? ` — ${item.issuer}` : ""}{item.year ? ` (${item.year})` : ""}</li>)}</ul></Section> : null}
+    </>
+  );
+}
+
+function StandardLayout({ resume }: { resume: StructuredResume }) {
+  return <><header className="resume-header"><h1>{resume.personal_info.full_name || "Seu nome"}</h1>{resume.personal_info.headline ? <p className="resume-headline">{resume.personal_info.headline}</p> : null}<Contact resume={resume} /></header><main><Summary resume={resume} /><Experience resume={resume} /><Education resume={resume} /><Skills resume={resume} /><Extras resume={resume} /><Languages resume={resume} /></main></>;
+}
+
+function CleanLayout({ resume }: { resume: StructuredResume }) {
+  return <><header className="resume-header"><div><h1>{resume.personal_info.full_name || "Seu nome"}</h1><p className="resume-headline">{resume.personal_info.headline}</p></div><Contact resume={resume} icons /></header><main><Summary resume={resume} /><Education resume={resume} /><Experience resume={resume} /><Skills resume={resume} /><Languages resume={resume} /><Extras resume={resume} /></main></>;
+}
+
+function CompactLayout({ resume }: { resume: StructuredResume }) {
+  return <><header className="resume-header"><h1>{resume.personal_info.full_name || "Seu nome"}</h1><p className="resume-headline">{resume.personal_info.headline}</p><Contact resume={resume} /></header><Summary resume={resume} /><div className="resume-columns"><div><Experience resume={resume} /><Extras resume={resume} /></div><div><Education resume={resume} /><Skills resume={resume} /><Languages resume={resume} /></div></div></>;
+}
+
+function ExecutiveLayout({ resume }: { resume: StructuredResume }) {
+  return <div className="resume-executive-grid"><aside><Section title="Sobre mim"><p>{resume.professional_summary}</p></Section><Contact resume={resume} icons /><Education resume={resume} /></aside><main><header className="resume-header"><h1>{resume.personal_info.full_name || "Seu nome"}</h1><p className="resume-headline">{resume.personal_info.headline}</p></header><Experience resume={resume} /><Skills resume={resume} /><Extras resume={resume} /><Languages resume={resume} /></main></div>;
+}
+
+function ModernLayout({ resume }: { resume: StructuredResume }) {
+  return <div className="resume-modern-grid"><aside><header className="resume-header"><h1>{resume.personal_info.full_name || "Seu nome"}</h1></header><Section title="Contato"><Contact resume={resume} icons /></Section><Skills resume={resume} /><Languages resume={resume} /><Extras resume={resume} /></aside><main><Summary resume={resume} /><Education resume={resume} /><Experience resume={resume} /></main></div>;
+}
+
+function ProfessionalLayout({ resume }: { resume: StructuredResume }) {
+  return <><header className="resume-header"><h1>{resume.personal_info.full_name || "Seu nome"}</h1><Contact resume={resume} icons /></header><main>{resume.personal_info.headline ? <Section title="Objetivo"><p className="resume-objective">{resume.personal_info.headline}</p></Section> : null}<Section title="Qualificações"><p>{resume.professional_summary}</p><Skills resume={resume} /></Section><Education resume={resume} /><Experience resume={resume} /><Languages resume={resume} /><Extras resume={resume} /></main></>;
+}
+
+function TechLayout({ resume }: { resume: StructuredResume }) {
+  return <><header className="resume-header"><div><h1>{resume.personal_info.full_name || "Seu nome"}</h1><p className="resume-headline">{resume.personal_info.headline}</p></div><Contact resume={resume} icons /><p className="resume-tech-summary">{resume.professional_summary}</p></header><div className="resume-tech-pair"><Education resume={resume} /><Skills resume={resume} /></div><Experience resume={resume} /><Extras resume={resume} /><Languages resume={resume} /></>;
+}
+
+const LAYOUTS: Record<string, (props: { resume: StructuredResume }) => ReactNode> = {
+  clean: CleanLayout,
+  compact: CompactLayout,
+  executive: ExecutiveLayout,
+  modern: ModernLayout,
+  professional: ProfessionalLayout,
+  tech: TechLayout,
+};
+
+export function ResumePreview({ resume, template = "minimal", appearance = DEFAULT_RESUME_APPEARANCE, className }: PreviewProps) {
+  const Layout = LAYOUTS[template] ?? StandardLayout;
+  const style = {
+    "--resume-accent": appearance.color,
+    "--resume-font": FONT_STACKS[appearance.font],
+    "--resume-scale": appearance.fontScale,
+  } as CSSProperties;
 
   return (
-    <article
-      className={cn(
-        "print-page mx-auto w-full max-w-[820px] bg-white text-neutral-900",
-        style.page,
-        className,
-      )}
-    >
-      <header className={style.header}>
-        <h1 className={style.name}>{info.full_name || "Seu nome"}</h1>
-        {info.headline ? <p className={cn("mt-1", style.headline)}>{info.headline}</p> : null}
-        {contactLine ? <p className="mt-2 text-[10.5px] text-neutral-600">{contactLine}</p> : null}
-        {resume?.links?.length ? (
-          <p className="mt-1 text-[10.5px] text-neutral-600">
-            {resume.links.map((link, i) => (
-              <span key={link.url + i}>
-                {i > 0 ? "  •  " : ""}
-                <a href={link.url} className="underline decoration-neutral-300">
-                  {link.label || link.url}
-                </a>
-              </span>
-            ))}
-          </p>
-        ) : null}
-      </header>
-
-      {style.accentBar ? <div className="mt-4 h-1 w-16 rounded bg-neutral-900" /> : null}
-
-      {resume?.professional_summary ? (
-        <Section title="Resumo profissional" style={style}>
-          <p className={style.body}>{resume.professional_summary}</p>
-        </Section>
-      ) : null}
-
-      {resume?.experience?.length ? (
-        <Section title="Experiência profissional" style={style}>
-          {resume.experience.map((exp, i) => (
-            <div key={i}>
-              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                <p className="font-semibold">
-                  {exp.role}
-                  {exp.company ? ` — ${exp.company}` : ""}
-                </p>
-                <p className="text-[10px] text-neutral-500">
-                  {[exp.start_date, exp.end_date].filter(Boolean).join(" – ")}
-                  {exp.location ? ` · ${exp.location}` : ""}
-                </p>
-              </div>
-              <ul className="mt-1 list-disc space-y-0.5 pl-4">
-                {exp.bullets?.map((b, j) => (
-                  <li key={j} className={style.body}>
-                    {b}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </Section>
-      ) : null}
-
-      {resume?.projects?.length ? (
-        <Section title="Projetos" style={style}>
-          {resume.projects.map((p, i) => (
-            <div key={i}>
-              <p className="font-semibold">{p.name}</p>
-              <p className={style.body}>{p.description}</p>
-              {p.tech?.length ? <p className="text-[10px] text-neutral-500">{p.tech.join(" · ")}</p> : null}
-            </div>
-          ))}
-        </Section>
-      ) : null}
-
-      {resume?.education?.length ? (
-        <Section title="Formação" style={style}>
-          {resume.education.map((ed, i) => (
-            <div key={i} className="flex flex-wrap items-baseline justify-between gap-x-3">
-              <p>
-                <span className="font-semibold">{ed.degree}</span>
-                {ed.institution ? ` — ${ed.institution}` : ""}
-                {ed.details ? <span className="text-neutral-600"> · {ed.details}</span> : null}
-              </p>
-              <p className="text-[10px] text-neutral-500">{[ed.start_date, ed.end_date].filter(Boolean).join(" – ")}</p>
-            </div>
-          ))}
-        </Section>
-      ) : null}
-
-      {resume?.skills?.length ? (
-        <Section title="Competências" style={style}>
-          <p className={cn(style.body, style.twoColumnSkills && "columns-2 gap-6")}>{resume.skills.join(" • ")}</p>
-        </Section>
-      ) : null}
-
-      {resume?.certifications?.length ? (
-        <Section title="Certificações e cursos" style={style}>
-          <ul className="list-disc space-y-0.5 pl-4">
-            {resume.certifications.map((c, i) => (
-              <li key={i} className={style.body}>
-                {c.name}
-                {c.issuer ? ` — ${c.issuer}` : ""}
-                {c.year ? ` (${c.year})` : ""}
-              </li>
-            ))}
-          </ul>
-        </Section>
-      ) : null}
-
-      {resume?.languages?.length ? (
-        <Section title="Idiomas" style={style}>
-          <p className={style.body}>
-            {resume.languages.map((l) => `${l.name}${l.level ? ` (${l.level})` : ""}`).join(" • ")}
-          </p>
-        </Section>
-      ) : null}
+    <article style={style} className={cn("print-page resume-document", `resume-template-${template}`, `resume-spacing-${appearance.spacing}`, !appearance.decorations && "resume-no-decoration", className)}>
+      <Layout resume={resume} />
     </article>
   );
 }
