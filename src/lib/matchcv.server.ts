@@ -1,12 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  ANALYSIS_SYSTEM,
-  OPTIMIZE_SYSTEM,
-  BUILD_RESUME_SYSTEM,
-  callAI,
-  computeAtsScore,
-  normalizeAnalysis,
-} from "./ai.server";
+import { ANALYSIS_SYSTEM, OPTIMIZE_SYSTEM, BUILD_RESUME_SYSTEM, callAI, computeAtsScore, normalizeAnalysis } from "./ai.server";
 import type { AnalysisResult, InterviewPrep, LinkedinSuggestions, StructuredResume } from "./matchcv-types";
 
 type Ctx = { supabase: SupabaseClient<any, any, any>; userId: string };
@@ -38,7 +31,7 @@ export async function runAnalysis(ctx: Ctx, input: { resumeText: string; resumeI
 
 export async function runOptimization(ctx: Ctx, analysisId: string) {
   const { result, jobDescription } = await loadAnalysis(ctx, analysisId);
-  const raw = await callAI(OPTIMIZE_SYSTEM, `CURRÍCULO ESTRUTURADO ATUAL (JSON):\n${JSON.stringify(result.resume)}\n\nDESCRIÇÃO DA VAGA:\n"""${jobDescription.slice(0, 20000)}"""\n\nREQUISITOS AINDA NÃO COMPROVADOS PELO PERFIL:\n${result.requirements?.filter((r) => r.status !== "atendido").map((r) => r.requirement).join(", ")}\n\nCrie a versão mais competitiva possível para esta vaga. Quando faltar experiência direta, reposicione o currículo para destacar competências transferíveis, formação, projetos, cursos e potencial reais. Não invente credenciais.`);
+  const raw = await callAI(OPTIMIZE_SYSTEM, `CURRÍCULO ESTRUTURADO ATUAL (JSON):\n${JSON.stringify(result.resume)}\n\nDESCRIÇÃO DA VAGA:\n"""${jobDescription.slice(0, 20000)}"""\n\nREQUISITOS AINDA NÃO COMPROVADOS PELO PERFIL:\n${result.requirements?.filter((r) => r.status !== "atendido").map((r) => r.requirement).join(", ")}\n\nCrie a versão mais competitiva e ATS possível para esta vaga. Mesmo com compatibilidade muito baixa, reposicione o currículo para destacar competências transferíveis, formação, projetos, cursos e potencial reais. Não invente credenciais.`);
   const optimized = raw["resume"] as StructuredResume;
   const rawAfter = (raw["after_scores"] ?? {}) as Record<string, unknown>;
   const after = { compatibility: Math.min(100, Math.max(result.scores.compatibility, Number(rawAfter["compatibility"]) || 0)), ats: Math.min(100, Math.max(result.scores.ats, computeAtsScore(rawAfter))) };
@@ -47,11 +40,12 @@ export async function runOptimization(ctx: Ctx, analysisId: string) {
   return { generatedResumeId: row.id as string, resume: optimized, before: { compatibility: result.scores.compatibility, ats: result.scores.ats }, after, changes: (raw["changes"] as string[]) ?? [] };
 }
 
-export async function runResumeBuilder(ctx: Ctx, profileText: string) {
-  const raw = await callAI(BUILD_RESUME_SYSTEM, `INFORMAÇÕES FORNECIDAS PELO CANDIDATO:\n"""${profileText.slice(0, 24000)}"""\n\nCrie um currículo ATS completo e profissional usando todas as informações úteis acima.`);
+export async function runResumeBuilder(ctx: Ctx, input: { profileText: string; oldResumeText: string; changeRequest: string }) {
+  const raw = await callAI(BUILD_RESUME_SYSTEM, `CURRÍCULO ANTIGO EXTRAÍDO DO PDF/DOCX:\n"""${input.oldResumeText.slice(0, 18000)}"""\n\nINFORMAÇÕES NOVAS/COMPLEMENTARES:\n"""${input.profileText.slice(0, 14000)}"""\n\nO QUE O CANDIDATO QUER MUDAR NO NOVO CURRÍCULO:\n"""${input.changeRequest.slice(0, 8000)}"""\n\nCrie um currículo ATS completo, profissional e persuasivo, preservando apenas fatos informados pelo candidato.`);
   const resume = raw["resume"] as StructuredResume;
   if (!resume?.personal_info) throw new Error("Não foi possível estruturar o currículo.");
-  const { data, error } = await ctx.supabase.from("resumes").insert({ user_id: ctx.userId, title: resume.personal_info.full_name ? `Currículo de ${resume.personal_info.full_name}` : "Meu currículo", raw_text: profileText, structured: resume as unknown as Record<string, unknown> }).select("id").single();
+  const rawText = [input.oldResumeText, input.profileText, input.changeRequest].filter(Boolean).join("\n\n");
+  const { data, error } = await ctx.supabase.from("resumes").insert({ user_id: ctx.userId, title: resume.personal_info.full_name ? `Currículo de ${resume.personal_info.full_name}` : "Meu currículo", raw_text: rawText, structured: resume as unknown as Record<string, unknown> }).select("id").single();
   if (error) throw new Error(error.message);
   return { resumeId: data.id as string, resume };
 }
