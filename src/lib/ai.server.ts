@@ -1,7 +1,7 @@
 import type { AnalysisResult, StructuredResume } from "./matchcv-types";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const MODEL = "google/gemini-3.5-flash";
+const MODEL = "google/gemini-3.7-flash";
 
 const TRUTH_RULE = `REGRA ABSOLUTA: nunca invente empresas, experiências, projetos, cursos, certificações, tecnologias, formações, idiomas, resultados, números ou competências que não estejam no currículo do candidato. Você apenas reorganiza, reescreve e destaca o que é real. Se algo pedido pela vaga não existe no currículo, aponte como ausente.`;
 
