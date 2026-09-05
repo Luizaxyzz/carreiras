@@ -29,10 +29,12 @@ export type StructuredResume = {
     phone?: string;
     location?: string;
   };
+  objective?: string;
   professional_summary: string;
   experience: ResumeExperience[];
   education: ResumeEducation[];
   skills: string[];
+  differentiators?: string[];
   certifications: ResumeCertification[];
   projects: ResumeProject[];
   languages: ResumeLanguage[];
