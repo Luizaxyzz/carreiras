@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Check, Download, LayoutTemplate, Loader2, Save, Sparkles } from "lucide-react";
+import { Check, Download, LayoutTemplate, Loader2, Palette, RotateCcw, Save, Sparkles, Type } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ResumePreview } from "@/components/resume/ResumePreview";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { DEFAULT_RESUME_APPEARANCE, ResumePreview } from "@/components/resume/ResumePreview";
+import type { ResumeAppearance, ResumeFont, ResumeSpacing } from "@/components/resume/ResumePreview";
+import { TemplateThumb } from "@/components/landing/TemplateCard";
 import { SAMPLE_RESUME } from "@/lib/sample-resume";
 import { TEMPLATES } from "@/lib/matchcv-types";
 import type { AnalysisResult, StructuredResume } from "@/lib/matchcv-types";
@@ -40,6 +45,7 @@ function TemplatesPage() {
   const [optimizing, setOptimizing] = useState(false);
   const [scores, setScores] = useState<{ before: { compatibility: number; ats: number }; after: { compatibility: number; ats: number } } | null>(null);
   const [changes, setChanges] = useState<string[]>([]);
+  const [appearance, setAppearance] = useState<ResumeAppearance>(DEFAULT_RESUME_APPEARANCE);
 
   useEffect(() => {
     if (!analysisId || !user) return;
@@ -99,8 +105,20 @@ function TemplatesPage() {
 
   function saveResume() {
     setResume((current) => ({ ...current, skills: skills.split(",").map((skill) => skill.trim()).filter(Boolean) }));
+    window.localStorage.setItem("matchcv-resume-appearance", JSON.stringify(appearance));
     toast.success("Alterações aplicadas à visualização.");
   }
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("matchcv-resume-appearance");
+    if (!saved) return;
+    try {
+      const parsed = JSON.parse(saved) as Partial<ResumeAppearance>;
+      setAppearance({ ...DEFAULT_RESUME_APPEARANCE, ...parsed });
+    } catch {
+      window.localStorage.removeItem("matchcv-resume-appearance");
+    }
+  }, []);
 
   function downloadResume() {
     saveResume();
@@ -151,22 +169,33 @@ function TemplatesPage() {
 
       <section className="no-print surface-card p-6 md:p-8">
         <div className="flex items-center justify-between gap-4"><div><p className="text-sm font-medium text-primary">1. Escolha um modelo</p><h2 className="mt-1 text-xl font-semibold">Um visual para cada oportunidade</h2></div><span className="hidden text-xs text-muted-foreground sm:block">{TEMPLATES.length} modelos disponíveis</span></div>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {TEMPLATES.map((item) => (
-            <button key={item.id} type="button" onClick={() => setTemplate(item.id)} className={`group rounded-2xl border p-4 text-left transition-all ${template === item.id ? "border-primary bg-primary-soft/40 ring-2 ring-primary/20" : "border-border hover:border-primary/40 hover:bg-accent/30"}`}>
-              <div className="flex items-start justify-between gap-2"><span className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground"><LayoutTemplate className="size-4" /></span>{template === item.id ? <span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground"><Check className="size-3.5" /></span> : null}</div>
-              <p className="mt-4 text-sm font-semibold">{item.name}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{item.description}</p>
-            </button>
+            <Button key={item.id} type="button" variant="outline" onClick={() => setTemplate(item.id)} className={`group relative h-auto min-w-0 flex-col items-stretch p-2 text-left ${template === item.id ? "border-primary bg-primary-soft/40 ring-2 ring-primary/20" : "border-border hover:border-primary/40 hover:bg-accent/30"}`}>
+              <TemplateThumb template={item.id} resume={resume} appearance={appearance} />
+              <span className="flex min-w-0 items-start justify-between gap-2 px-2 py-2"><span className="min-w-0"><span className="block text-sm font-semibold">{item.name}</span><span className="mt-1 block whitespace-normal text-xs font-normal leading-5 text-muted-foreground">{item.description}</span></span>{template === item.id ? <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"><Check className="size-3.5" /></span> : null}</span>
+            </Button>
           ))}
         </div>
       </section>
 
       <section className="grid items-start gap-6 xl:grid-cols-[minmax(0,0.8fr)_minmax(420px,1.2fr)]">
-        <div className="no-print surface-card p-6 md:p-8">
+        <div className="no-print space-y-6">
+        <div className="surface-card p-6 md:p-8">
           <div className="flex items-start gap-3"><div className="flex size-10 items-center justify-center rounded-xl bg-primary-soft text-primary"><Sparkles className="size-4" /></div><div><p className="text-sm font-medium text-primary">2. Edite seu conteúdo</p><h2 className="mt-1 text-xl font-semibold">Ajustes rápidos e reais</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Melhore a apresentação sem inventar experiências ou qualificações.</p></div></div>
           <div className="mt-6 space-y-5"><div className="space-y-2"><label htmlFor="resume-name" className="text-sm font-medium">Nome completo</label><Input id="resume-name" value={resume.personal_info.full_name} onChange={(event) => updateResume("full_name", event.target.value)} /></div><div className="space-y-2"><label htmlFor="resume-headline" className="text-sm font-medium">Título profissional</label><Input id="resume-headline" value={resume.personal_info.headline ?? ""} onChange={(event) => updateResume("headline", event.target.value)} /></div><div className="space-y-2"><label htmlFor="resume-summary" className="text-sm font-medium">Resumo profissional</label><Textarea id="resume-summary" value={resume.professional_summary} onChange={(event) => setResume((current) => ({ ...current, professional_summary: event.target.value }))} className="min-h-32 resize-y" /></div><div className="space-y-2"><label htmlFor="resume-skills" className="text-sm font-medium">Competências</label><Input id="resume-skills" value={skills} onChange={(event) => setSkills(event.target.value)} /><p className="text-xs text-muted-foreground">Separe cada competência por vírgula.</p></div></div>
         </div>
-        <div className="surface-card overflow-hidden p-4 md:p-6"><div className="no-print mb-4 flex items-center justify-between gap-3"><div><p className="text-sm font-medium text-primary">Visualização ao vivo</p><p className="text-xs text-muted-foreground">Modelo {TEMPLATES.find((item) => item.id === template)?.name}</p></div><span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">Compatível com ATS</span></div><div className="print-page max-h-[760px] overflow-auto rounded-xl bg-muted/60 p-3 md:p-6"><ResumePreview resume={resume} template={template} /></div></div>
+        <div className="surface-card p-6 md:p-8">
+          <div className="flex items-start justify-between gap-4"><div className="flex items-start gap-3"><div className="flex size-10 items-center justify-center rounded-xl bg-primary-soft text-primary"><Palette className="size-4" /></div><div><p className="text-sm font-medium text-primary">3. Personalize o visual</p><h2 className="mt-1 text-xl font-semibold">Deixe do seu jeito</h2></div></div><Button variant="ghost" size="icon" title="Restaurar aparência" onClick={() => setAppearance(DEFAULT_RESUME_APPEARANCE)}><RotateCcw className="size-4" /></Button></div>
+          <div className="mt-6 space-y-6">
+            <div className="space-y-3"><label htmlFor="resume-color" className="text-sm font-medium">Cor principal</label><div className="flex flex-wrap items-center gap-2">{["#244a73", "#315c42", "#7a3648", "#5b4a86", "#9a542f", "#20252b"].map((color) => <Button key={color} type="button" variant="outline" size="icon" title={`Usar cor ${color}`} aria-label={`Usar cor ${color}`} onClick={() => setAppearance((current) => ({ ...current, color }))} className={appearance.color === color ? "ring-2 ring-primary ring-offset-2" : ""}><span className="size-5 rounded-full border border-border" style={{ backgroundColor: color }} /></Button>)}<label className="relative flex size-9 cursor-pointer items-center justify-center rounded-md border border-input" title="Escolher outra cor"><input id="resume-color" type="color" value={appearance.color} onChange={(event) => setAppearance((current) => ({ ...current, color: event.target.value }))} className="absolute inset-0 cursor-pointer opacity-0" /><Palette className="size-4" /></label></div></div>
+            <div className="grid gap-5 sm:grid-cols-2"><div className="space-y-2"><label className="text-sm font-medium" htmlFor="resume-font">Fonte</label><Select value={appearance.font} onValueChange={(font: ResumeFont) => setAppearance((current) => ({ ...current, font }))}><SelectTrigger id="resume-font"><Type className="mr-2 size-4" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="sans">Arial — moderna</SelectItem><SelectItem value="humanist">Trebuchet — acolhedora</SelectItem><SelectItem value="serif">Georgia — clássica</SelectItem><SelectItem value="mono">Courier — técnica</SelectItem></SelectContent></Select></div><div className="space-y-2"><label className="text-sm font-medium" htmlFor="resume-spacing">Espaçamento</label><Select value={appearance.spacing} onValueChange={(spacing: ResumeSpacing) => setAppearance((current) => ({ ...current, spacing }))}><SelectTrigger id="resume-spacing"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="compact">Compacto</SelectItem><SelectItem value="balanced">Equilibrado</SelectItem><SelectItem value="airy">Amplo</SelectItem></SelectContent></Select></div></div>
+            <div className="space-y-3"><div className="flex items-center justify-between"><label className="text-sm font-medium" htmlFor="resume-size">Tamanho do texto</label><span className="text-xs text-muted-foreground">{Math.round(appearance.fontScale * 100)}%</span></div><Slider id="resume-size" min={0.85} max={1.18} step={0.01} value={[appearance.fontScale]} onValueChange={([fontScale]) => setAppearance((current) => ({ ...current, fontScale: fontScale ?? 1 }))} /></div>
+            <div className="flex items-center justify-between gap-4"><div><label className="text-sm font-medium" htmlFor="resume-decorations">Detalhes visuais</label><p className="mt-1 text-xs text-muted-foreground">Linhas, faixas e formas do modelo.</p></div><Switch id="resume-decorations" checked={appearance.decorations} onCheckedChange={(decorations) => setAppearance((current) => ({ ...current, decorations }))} /></div>
+          </div>
+        </div>
+        </div>
+        <div className="surface-card overflow-hidden p-4 md:p-6"><div className="no-print mb-4 flex items-center justify-between gap-3"><div><p className="text-sm font-medium text-primary">Visualização ao vivo</p><p className="text-xs text-muted-foreground">Modelo {TEMPLATES.find((item) => item.id === template)?.name}</p></div><span className="rounded-full bg-success-soft px-3 py-1 text-xs font-medium text-success">Compatível com ATS</span></div><div className="resume-preview-stage print-page max-h-[900px] overflow-auto rounded-xl bg-muted/60 p-3 md:p-6"><ResumePreview resume={resume} template={template} appearance={appearance} /></div></div>
       </section>
     </div>
   );

@@ -1,5 +1,6 @@
 import { Check, Eye } from "lucide-react";
 import { ResumePreview } from "@/components/resume/ResumePreview";
+import type { ResumeAppearance } from "@/components/resume/ResumePreview";
 import { SAMPLE_RESUME } from "@/lib/sample-resume";
 import type { StructuredResume } from "@/lib/matchcv-types";
 import { cn } from "@/lib/utils";
@@ -7,14 +8,16 @@ import { cn } from "@/lib/utils";
 export function TemplateThumb({
   template,
   resume,
+  appearance,
 }: {
   template: string;
   resume?: StructuredResume | undefined;
+  appearance?: ResumeAppearance;
 }) {
   return (
     <div className="pointer-events-none aspect-[210/297] w-full overflow-hidden rounded-xl border border-border bg-white">
       <div className="origin-top-left scale-[0.42] sm:scale-[0.38]" style={{ width: "238%" }}>
-        <ResumePreview resume={resume ?? SAMPLE_RESUME} template={template} />
+        <ResumePreview resume={resume ?? SAMPLE_RESUME} template={template} appearance={appearance} />
       </div>
     </div>
   );
