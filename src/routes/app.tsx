@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/brand/Logo";
 import { Button } from "@/components/ui/button";
@@ -31,11 +31,12 @@ const NAV = [
 function AppLayout() {
   const navigate = useNavigate();
   const { user, loading, signOut } = useAuth();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/auth", search: { redirect: "/app" } });
-  }, [loading, user, navigate]);
+    if (!loading && !user) navigate({ to: "/auth", search: { redirect: pathname } });
+  }, [loading, user, navigate, pathname]);
 
   if (loading || !user) {
     return <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">Carregando seu espaço...</div>;
